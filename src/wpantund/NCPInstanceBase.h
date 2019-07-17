@@ -755,6 +755,9 @@ protected:
 
 	WPAN::NetworkInstance mCurrentNetworkInstance;
 
+	uint8_t mDomainPrefix[8];
+	std::string mDomainName;
+
 	NodeType mNodeType;
 
 	int mFailureCount;

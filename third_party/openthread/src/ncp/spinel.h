@@ -619,6 +619,9 @@ enum
     SPINEL_NCP_LOG_REGION_OT_CLI      = 14,
     SPINEL_NCP_LOG_REGION_OT_CORE     = 15,
     SPINEL_NCP_LOG_REGION_OT_UTIL     = 16,
+    SPINEL_NCP_LOG_REGION_OT_BBR      = 17,
+    SPINEL_NCP_LOG_REGION_OT_DUA      = 18,
+    SPINEL_NCP_LOG_REGION_OT_MLR      = 19,
 };
 
 enum
@@ -2674,6 +2677,151 @@ typedef enum
      *
      */
     SPINEL_PROP_THREAD_NEW_DATASET = SPINEL_PROP_THREAD_EXT__BEGIN + 40,
+
+    SPINEL_PROP_THREAD_DOMAIN_NAME = SPINEL_PROP_THREAD_EXT__BEGIN + 60, ///< [U]
+
+    /// Domain Prefix Prefix
+    /** Format: `t(6CC))` - read or write
+     *
+     * Data per item is:
+     *
+     *  `6`: IPv6 Prefix
+     *  `C`: Prefix length in bits
+     *  `C`: TLV flags, optional when read
+     *
+     */
+    SPINEL_PROP_THREAD_DOMAIN_PREFIX = SPINEL_PROP_THREAD_EXT__BEGIN + 61,
+
+    SPINEL_PROP_THREAD_BACKBONE_ROUTER_PRIMARY_STATE = SPINEL_PROP_THREAD_EXT__BEGIN + 62, ///< [b]
+
+    /// Backbone Interface status
+    /** Format: `b` - write only
+     *
+     * This property notifies the ncp whether or not the backbone interface is up/down.
+     *
+     */
+    SPINEL_PROP_THREAD_BACKBONE_INTERFACE = SPINEL_PROP_THREAD_EXT__BEGIN + 63,
+    SPINEL_PROP_THREAD_BACKBONE_COAP_PORT = SPINEL_PROP_THREAD_EXT__BEGIN + 64, ///< [L]
+
+    /// Primary Backbone Router
+    /** Format: `A(t(iD))` - Read
+     *
+     * Primary Backbone Router consists of a set of properties (e.g. sequence number, reregistration delay,
+     * mlr timeout etc). Note that all perperties are present when read.
+     *
+     * The following properties can be included in a Primary Backbone Router list:
+     *
+     *   SPINEL_PROP_THREAD_BACKBONE_ROUTER_SEQUENCE_NUMBER
+     *   SPINEL_PROP_THREAD_BACKBONE_ROUTER_REREGISTRATION_DELAY
+     *   SPINEL_PROP_THREAD_BACKBONE_ROUTER_MLR_TIMEOUT
+     *   SPINEL_PROP_THREAD_BACKBONE_ROUTER_SERVER16
+     *
+     * Data per item is:
+     *
+     *  `C`: Sequence Number
+     *  `S`: Reregistration Delay
+     *  `L`: MLR Timeout
+     *  `S`: RLOC16 or ALOC16 if the device only store stable network data
+     *
+     */
+    SPINEL_PROP_THREAD_BACKBONE_ROUTER_PRIMARY = SPINEL_PROP_THREAD_EXT__BEGIN + 65,
+
+    /// Local Backbone Router.
+    /** Format: `A(t(iD))` - Write or read
+     *
+     * Local Backbone Router consists of a set of properties (e.g. sequence number, reregistration delay,
+     * mlr timeout etc).
+     *
+     * Note that all perperties are present when read, but not all supported properties may be present (have a value)
+     * when write, if not present, continue to use the values before write.
+     *
+     * On write, the Dataset value is encoded as an array of structs containing pairs of property key (as `i`)
+     * followed by the property value (as `D`). The property value must follow the format associated with the
+     * corresponding property.
+     *
+     * On write, any unknown/unsupported property keys must be ignored.
+     *
+     * The following properties can be included in a Dataset list:
+     *
+     *   SPINEL_PROP_THREAD_BBR_DATASET_SEQUENCE_NUMBER
+     *   SPINEL_PROP_THREAD_BBR_DATASET_REREGISTRATION_DELAY
+     *   SPINEL_PROP_THREAD_BBR_DATASET_MLR_TIMEOUT
+     *
+     * On read, data per item is:
+     *
+     *  `C`: Sequence Number
+     *  `S`: Reregistration Delay
+     *  `L`: MLR Timeout
+     *
+     */
+    SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL = SPINEL_PROP_THREAD_EXT__BEGIN + 66,
+
+    /// Backbone Router Sequence Number
+    /** Format: `C` - No direct read or write
+     *
+     * It can only be included in one of the Backbone Router related properties below:
+     *
+     * SPINEL_PROP_THREAD_BACKBONE_ROUTER_PRIMARY
+     * SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL
+     *
+     */
+    SPINEL_PROP_THREAD_BACKBONE_ROUTER_SEQUENCE_NUMBER = SPINEL_PROP_THREAD_EXT__BEGIN + 67,
+
+    /// Backbone Router Reregistration Delay
+    /** Format: `S` - No direct read or write
+     *
+     * It can only be included in one of the Backbone Router related properties below:
+     *
+     * SPINEL_PROP_THREAD_BACKBONE_ROUTER_PRIMARY
+     * SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL
+     *
+     */
+    SPINEL_PROP_THREAD_BACKBONE_ROUTER_REREGISTRATION_DELAY = SPINEL_PROP_THREAD_EXT__BEGIN + 68,
+
+    /// Backbone Router Mlr Timeout
+    /** Format: `L` - No direct read or write
+     *
+     * It can only be included in one of the Backbone Router related properties below:
+     *
+     * SPINEL_PROP_THREAD_BACKBONE_ROUTER_PRIMARY
+     * SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL
+     *
+     */
+    SPINEL_PROP_THREAD_BACKBONE_ROUTER_MLR_TIMEOUT = SPINEL_PROP_THREAD_EXT__BEGIN + 69,
+
+    /// PBBR Short address
+    /** Format: `S` - No direct read or write
+     *
+     * It can only be included in one of the Backbone Router related properties below:
+     *
+     * SPINEL_PROP_THREAD_BACKBONE_ROUTER_PRIMARY
+     *
+     */
+    SPINEL_PROP_THREAD_BACKBONE_ROUTER_SERVER16 = SPINEL_PROP_THREAD_EXT__BEGIN + 70,
+
+    /// Thread Backbone Router Group Table
+    /** Format: [A(t(6L)] - Read only
+     *
+     * Data per item is:
+     *
+     *  `6`: IPv6 Address
+     *  `L`: Remaining valid period (s)
+     *
+     */
+    SPINEL_PROP_THREAD_GROUP_TABLE = SPINEL_PROP_THREAD_EXT__BEGIN + 71,
+
+    /// Thread Nd Proxy Table
+    /** Format: [A(t(6ELb)] - Read only
+     *
+     * Data per item is:
+     *
+     *  `6`: IPv6 Address
+     *  `E`: Mesh Local Iid
+     *  `L`: Time Since Last Registration Transaction
+     *  `b`: Dad flag
+     *
+     */
+    SPINEL_PROP_THREAD_NDPROXY_TABLE = SPINEL_PROP_THREAD_EXT__BEGIN + 72,
 
     SPINEL_PROP_THREAD_EXT__END = 0x1600,
 

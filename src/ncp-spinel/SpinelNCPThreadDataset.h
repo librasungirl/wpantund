@@ -88,6 +88,28 @@ private:
 	int parse_dataset_entry(const uint8_t *data_in, spinel_size_t data_len);
 };
 
+class ThreadBbrDataset
+{
+public:
+
+	ThreadBbrDataset(void) { clear(); }
+
+	void clear(void);
+
+	void convert_to_valuemap(ValueMap &map);
+	void convert_to_string_list(std::list<std::string> &list);
+
+	int  set_from_spinel_frame(const uint8_t *data_in, spinel_size_t data_len);
+	void convert_to_spinel_frame(Data &frame);
+
+	ThreadDataset::Optional<uint8_t>         mSequenceNumber;
+	ThreadDataset::Optional<uint16_t>        mReregistrationDelay;
+	ThreadDataset::Optional<uint32_t>        mMlrTimeout;
+	ThreadDataset::Optional<uint16_t>        mServer;
+private:
+	int parse_dataset_entry(const uint8_t *data_in, spinel_size_t data_len);
+};
+
 }; // namespace wpantund
 }; // namespace nl
 

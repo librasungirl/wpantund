@@ -484,6 +484,13 @@ SpinelNCPInstance::get_supported_property_keys()const
 	properties.insert(kWPANTUNDProperty_ThreadPendingDataset);
 	properties.insert(kWPANTUNDProperty_ThreadAddressCacheTable);
 
+	properties.insert(kWPANTUNDProperty_ThreadBackboneCoapPort);
+	properties.insert(kWPANTUNDProperty_ThreadBackboneInterface);
+	properties.insert(kWPANTUNDProperty_ThreadDomainName);
+	properties.insert(kWPANTUNDProperty_ThreadDomainPrefix);
+	properties.insert(kWPANTUNDProperty_ThreadPrimaryBbr);
+	properties.insert(kWPANTUNDProperty_ThreadLocalBbr);
+	properties.insert(kWPANTUNDProperty_ThreadPrimaryState);
 	if (mCapabilities.count(SPINEL_CAP_ERROR_RATE_TRACKING)) {
 		properties.insert(kWPANTUNDProperty_ThreadNeighborTableErrorRates);
 	}
@@ -1414,6 +1421,36 @@ bail:
 }
 
 static int
+unpack_domain_prefix(const uint8_t *data_in, spinel_size_t data_len, boost::any &value)
+{
+	spinel_ssize_t len;
+	struct in6_addr *addr;
+	uint8_t prefix_len;
+	int ret = kWPANTUNDStatus_Failure;
+
+	len = spinel_datatype_unpack(
+		data_in,
+		data_len,
+		(
+			SPINEL_DATATYPE_IPv6ADDR_S
+			SPINEL_DATATYPE_UINT8_S
+		),
+		&addr,
+		&prefix_len
+	);
+
+	if (len > 0)
+	{
+		char str[10];
+		snprintf(str, sizeof(str), "/%d", prefix_len);
+
+		value = boost::any(in6_addr_to_string(*addr) + std::string(str));
+		ret = kWPANTUNDStatus_Ok;
+	}
+	return ret;
+}
+
+static int
 unpack_thread_network_time_spinel(const uint8_t *data_in, spinel_size_t data_len, uint64_t &time, int8_t &time_sync_status)
 {
 	return spinel_datatype_unpack(
@@ -1846,7 +1883,30 @@ SpinelNCPInstance::regsiter_all_get_handlers(void)
 	register_get_handler_spinel_simple(
 		kWPANTUNDProperty_OpenThreadLogLevel,
 		SPINEL_PROP_DEBUG_NCP_LOG_LEVEL, SPINEL_DATATYPE_UINT8_S);
-
+	register_get_handler_spinel_simple(
+		kWPANTUNDProperty_ThreadDomainName,
+		SPINEL_PROP_THREAD_DOMAIN_NAME, SPINEL_DATATYPE_UTF8_S);
+	register_get_handler_spinel_simple(
+		kWPANTUNDProperty_ThreadBackboneInterface,
+		SPINEL_PROP_THREAD_BACKBONE_INTERFACE, SPINEL_DATATYPE_BOOL_S);
+	register_get_handler_spinel_simple(
+		kWPANTUNDProperty_ThreadBackboneCoapPort,
+		SPINEL_PROP_THREAD_BACKBONE_COAP_PORT, SPINEL_DATATYPE_UINT16_S);
+	register_get_handler_spinel_simple(
+		kWPANTUNDProperty_ThreadPrimaryState,
+		SPINEL_PROP_THREAD_BACKBONE_ROUTER_PRIMARY_STATE, SPINEL_DATATYPE_BOOL_S);
+	register_get_handler_spinel_simple(
+		kWPANTUNDProperty_ThreadBbrGroupTable,
+		SPINEL_PROP_THREAD_GROUP_TABLE, SPINEL_DATATYPE_DATA_S);
+	register_get_handler_spinel_simple(
+		kWPANTUNDProperty_ThreadBbrNdProxyTable,
+		SPINEL_PROP_THREAD_NDPROXY_TABLE, SPINEL_DATATYPE_DATA_S);
+	register_get_handler_spinel_simple(
+			kWPANTUNDProperty_ThreadLocalBbr,
+			SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL, SPINEL_DATATYPE_DATA_S);
+	register_get_handler_spinel_simple(
+			kWPANTUNDProperty_ThreadPrimaryBbr,
+			SPINEL_PROP_THREAD_BACKBONE_ROUTER_PRIMARY, SPINEL_DATATYPE_DATA_S);
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// Properties requiring capability check and associated with a spinel property
 	// with simple packing format
@@ -2141,6 +2201,9 @@ SpinelNCPInstance::regsiter_all_get_handlers(void)
 	register_get_handler_spinel_unpacker(
 		kWPANTUNDProperty_NCPPreferredChannelMask,
 		SPINEL_PROP_PHY_CHAN_PREFERRED, unpack_channel_mask);
+	register_get_handler_spinel_unpacker(
+		kWPANTUNDProperty_ThreadDomainPrefix,
+		SPINEL_PROP_THREAD_DOMAIN_PREFIX, unpack_domain_prefix);
 	register_get_handler_spinel_unpacker(
 		kWPANTUNDProperty_ThreadActiveDataset,
 		SPINEL_PROP_THREAD_ACTIVE_DATASET, boost::bind(unpack_dataset, _1, _2, _3, /* as_val_map */ false));
@@ -3014,6 +3077,15 @@ SpinelNCPInstance::regsiter_all_set_handlers(void)
 	register_set_handler_spinel(
 		kWPANTUNDProperty_ThreadRouterDowngradeThreshold,
 		SPINEL_PROP_THREAD_ROUTER_DOWNGRADE_THRESHOLD, SPINEL_DATATYPE_UINT8_C);
+	register_set_handler_spinel(
+		kWPANTUNDProperty_ThreadDomainName,
+		SPINEL_PROP_THREAD_DOMAIN_NAME, SPINEL_DATATYPE_UTF8_C);
+	register_set_handler_spinel(
+		kWPANTUNDProperty_ThreadBackboneInterface,
+		SPINEL_PROP_THREAD_BACKBONE_INTERFACE, SPINEL_DATATYPE_BOOL_C);
+	register_set_handler_spinel(
+		kWPANTUNDProperty_ThreadBackboneCoapPort,
+		SPINEL_PROP_THREAD_BACKBONE_COAP_PORT, SPINEL_DATATYPE_UINT16_C);
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// Properties requiring persistence (saving in settings) and associated with a
@@ -3243,6 +3315,21 @@ SpinelNCPInstance::regsiter_all_set_handlers(void)
 	register_set_handler(
 		kWPANTUNDProperty_DatasetCommand,
 		boost::bind(&SpinelNCPInstance::set_prop_DatasetCommand, this, _1, _2));
+	register_set_handler(
+		kWPANTUNDProperty_ThreadDomainPrefix,
+		boost::bind(&SpinelNCPInstance::set_prop_ThreadDomainPrefix, this, _1, _2));
+	register_set_handler(
+		kWPANTUNDProperty_BbrSequenceNumber,
+		boost::bind(&SpinelNCPInstance::set_prop_BbrSequenceNumber, this, _1, _2));
+	register_set_handler(
+		kWPANTUNDProperty_BbrReregistrationDelay,
+		boost::bind(&SpinelNCPInstance::set_prop_BbrReregistrationDelay, this, _1, _2));
+	register_set_handler(
+		kWPANTUNDProperty_BbrMlrTimeout,
+		boost::bind(&SpinelNCPInstance::set_prop_BbrMlrTimeout, this, _1, _2));
+	register_set_handler(
+		kWPANTUNDProperty_ThreadLocalBbr,
+		boost::bind(&SpinelNCPInstance::set_prop_ThreadLocalBbr, this, _1, _2));
 	register_set_handler(
 		kWPANTUNDProperty_DaemonTickleOnHostDidWake,
 		boost::bind(&SpinelNCPInstance::set_prop_DaemonTickleOnHostDidWake, this, _1, _2));
@@ -3642,6 +3729,96 @@ void
 SpinelNCPInstance::set_prop_DatasetCommand(const boost::any &value, CallbackWithStatus cb)
 {
 	perform_dataset_command(any_to_string(value), cb);
+}
+
+void
+SpinelNCPInstance::set_prop_ThreadDomainPrefix(const boost::any &value, CallbackWithStatus cb)
+{
+	Data packet = any_to_data(value);
+
+	if (packet.size() >= sizeof(uint8_t) * 2 + sizeof(in6_addr)) {
+		in6_addr prefix;
+		uint8_t prefixLen;
+		uint8_t flags;
+		uint8_t offset = 0;
+		memcpy(prefix.s6_addr, &packet[offset], sizeof(in6_addr));
+		offset += sizeof(in6_addr);
+		prefixLen = packet[offset++];
+		flags = packet[offset];
+
+		SpinelNCPTaskSendCommand::Factory factory(this);
+
+		factory.set_lock_property(SPINEL_PROP_THREAD_ALLOW_LOCAL_NET_DATA_CHANGE);
+		factory.set_callback(cb);
+
+		factory.add_command(SpinelPackData(
+			SPINEL_FRAME_PACK_CMD_PROP_VALUE_SET(
+				SPINEL_DATATYPE_IPv6ADDR_S  // Prefix
+				SPINEL_DATATYPE_UINT8_S    // Prefix length
+				SPINEL_DATATYPE_UINT8_S    // Prefix flags
+			),
+			SPINEL_PROP_THREAD_DOMAIN_PREFIX,
+			&prefix,
+			prefixLen,
+			flags
+		));
+
+	start_new_task(factory.finish());
+
+	} else {
+		cb(kWPANTUNDStatus_InvalidArgument);
+	}
+}
+
+void
+SpinelNCPInstance::set_prop_BbrSequenceNumber(const boost::any &value, CallbackWithStatus cb)
+{
+	mBbrDataset.mSequenceNumber.set(static_cast<uint8_t>(any_to_int(value)));
+	cb(kWPANTUNDStatus_Ok);
+}
+
+void
+SpinelNCPInstance::set_prop_BbrReregistrationDelay(const boost::any &value, CallbackWithStatus cb)
+{
+	mBbrDataset.mReregistrationDelay.set(static_cast<uint16_t>(any_to_int(value)));
+	cb(kWPANTUNDStatus_Ok);
+}
+
+void
+SpinelNCPInstance::set_prop_BbrMlrTimeout(const boost::any &value, CallbackWithStatus cb)
+{
+	mBbrDataset.mMlrTimeout.set(static_cast<uint32_t>(any_to_int(value)));
+	cb(kWPANTUNDStatus_Ok);
+}
+
+void
+SpinelNCPInstance::set_prop_ThreadLocalBbr(const boost::any &value, CallbackWithStatus cb)
+{
+	bool onoff = any_to_bool(value);
+	if (onoff)
+	{
+		Data frame;
+		mBbrDataset.convert_to_spinel_frame(frame);
+		SpinelNCPTaskSendCommand::Factory factory(this);
+
+		factory.set_lock_property(SPINEL_PROP_THREAD_ALLOW_LOCAL_NET_DATA_CHANGE);
+		factory.set_callback(cb);
+
+		factory.add_command(SpinelPackData(
+ 						SPINEL_FRAME_PACK_CMD_PROP_VALUE_SET(SPINEL_DATATYPE_DATA_S),
+ 						SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL,
+ 						frame.data(),
+ 						frame.size()
+ 						));
+
+		start_new_task(factory.finish());
+	}
+	else
+	{
+		// equivalent of 'erase' op on cache.
+		mBbrDataset.clear();
+		cb(kWPANTUNDStatus_Ok);
+	}
 }
 
 void
@@ -5011,6 +5188,161 @@ SpinelNCPInstance::handle_ncp_spinel_value_is(spinel_prop_key_t key, const uint8
 			syslog(LOG_INFO, "[-NCP-] AddressCache: Total %d entr%s", num_entries, (num_entries > 1) ? "ies" : "y");
 		}
 
+	} else if (key == SPINEL_PROP_THREAD_GROUP_TABLE) {
+		nl::Data data;
+		nl::Data cache;
+		data.push_back(2); // all
+
+		uint16_t num_entries = 0;
+
+		while (value_data_len > 0)
+		{
+			spinel_ssize_t len = 0;
+			const uint8_t *struct_data;
+			spinel_size_t struct_len;
+			struct in6_addr *ip6_addr = NULL;
+			uint32_t expirationtime = 0;
+
+			len = spinel_datatype_unpack(
+					value_data_ptr,
+					value_data_len,
+					SPINEL_DATATYPE_DATA_WLEN_S,
+					&struct_data,
+					&struct_len
+					);
+
+			__ASSERT_MACROS_check(len > 0);
+
+			value_data_ptr += len;
+			value_data_len -= len;
+
+			len = spinel_datatype_unpack(
+					struct_data,
+					struct_len,
+					(
+						SPINEL_DATATYPE_IPv6ADDR_S   // Multicast IP address
+						SPINEL_DATATYPE_UINT32_S     // Expiration time
+					),
+					&ip6_addr,
+					&expirationtime
+					);
+
+			__ASSERT_MACROS_check(len > 0);
+
+			syslog(LOG_INFO, "[-NCP-]: Group %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X"
+					"(Expiration Time %u)",
+					ip6_addr->s6_addr[0], ip6_addr->s6_addr[1], ip6_addr->s6_addr[2], ip6_addr->s6_addr[3],
+					ip6_addr->s6_addr[4], ip6_addr->s6_addr[5], ip6_addr->s6_addr[6], ip6_addr->s6_addr[7],
+					ip6_addr->s6_addr[8], ip6_addr->s6_addr[9], ip6_addr->s6_addr[10], ip6_addr->s6_addr[11],
+					ip6_addr->s6_addr[12], ip6_addr->s6_addr[13], ip6_addr->s6_addr[14], ip6_addr->s6_addr[15],
+					expirationtime
+					);
+
+			cache.append(ip6_addr->s6_addr, sizeof(struct in6_addr));
+
+			num_entries++;
+		}
+
+		syslog(LOG_INFO, "[-NCP-] Group Table: Total %d Multicast Group%s", num_entries, (num_entries > 1) ? "s" : "");
+
+		data.push_back(num_entries >> 8);
+		data.push_back(num_entries & 0xff);
+		data.append(cache);
+
+		signal_property_changed(kWPANTUNDProperty_ThreadBbrGroupTable, data);
+
+	} else if (key == SPINEL_PROP_THREAD_NDPROXY_TABLE) {
+		nl::Data data;
+		nl::Data cache;
+		data.push_back(2);
+		uint16_t num_entries = 0;
+
+		{
+
+			spinel_ssize_t len = 0;
+			const uint8_t *struct_data;
+			spinel_size_t struct_len;
+			const struct in6_addr *ip6_addr = NULL;
+			const spinel_eui64_t *eui64 = NULL;
+			uint32_t timeSinceLastRegistration = 0;
+			bool     dadFlag;
+			bool     arpCacheFlag;
+
+			while (value_data_len > 0)
+			{
+
+				len = spinel_datatype_unpack(
+						value_data_ptr,
+						value_data_len,
+						SPINEL_DATATYPE_DATA_WLEN_S,
+						&struct_data,
+						&struct_len
+						);
+
+				__ASSERT_MACROS_check(len > 0);
+
+				value_data_ptr += len;
+				value_data_len -= len;
+
+				len = spinel_datatype_unpack(
+						struct_data,
+						struct_len,
+						(
+						 SPINEL_DATATYPE_IPv6ADDR_S
+						 SPINEL_DATATYPE_EUI64_S
+						 SPINEL_DATATYPE_UINT32_S
+						 SPINEL_DATATYPE_BOOL_S
+						 SPINEL_DATATYPE_BOOL_S
+						),
+						&ip6_addr,
+						&eui64,
+						&timeSinceLastRegistration,
+						&dadFlag,
+						&arpCacheFlag
+						);
+
+				__ASSERT_MACROS_check(len > 0);
+
+				num_entries++;
+
+				syslog(LOG_INFO, "[-NCP-]: NdProxyTable entry %d", num_entries);
+
+				syslog(LOG_INFO, "[-NCP-]: %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X",
+						ip6_addr->s6_addr[0], ip6_addr->s6_addr[1], ip6_addr->s6_addr[2], ip6_addr->s6_addr[3],
+						ip6_addr->s6_addr[4], ip6_addr->s6_addr[5], ip6_addr->s6_addr[6], ip6_addr->s6_addr[7],
+						ip6_addr->s6_addr[8], ip6_addr->s6_addr[9], ip6_addr->s6_addr[10], ip6_addr->s6_addr[11],
+						ip6_addr->s6_addr[12], ip6_addr->s6_addr[13], ip6_addr->s6_addr[14], ip6_addr->s6_addr[15]);
+
+				syslog(LOG_INFO, "[-NCP-]: EUI64 %02X%02X%02X%02X%02X%02X%02X%02X",
+						eui64->bytes[0], eui64->bytes[1], eui64->bytes[2], eui64->bytes[3],
+						eui64->bytes[4], eui64->bytes[5], eui64->bytes[6], eui64->bytes[7]);
+
+				syslog(LOG_INFO, "[-NCP-]: Last Registration Time %04u", timeSinceLastRegistration);
+				syslog(LOG_INFO, "[-NCP-]: Dad flag %d (%s)", dadFlag, dadFlag ? "In progress" : "Done");
+				syslog(LOG_INFO, "[-NCP-]: In Arp Cache %d (%s)", arpCacheFlag, arpCacheFlag ? "True" : "False");
+
+				cache.append(ip6_addr->s6_addr, sizeof(struct in6_addr));
+				cache.append(eui64->bytes, sizeof(spinel_eui64_t));
+
+				// in big endian
+				cache.push_back(timeSinceLastRegistration >> 24);
+				cache.push_back(timeSinceLastRegistration >> 16);
+				cache.push_back(timeSinceLastRegistration >> 8);
+				cache.push_back(timeSinceLastRegistration & 0xff);
+
+				cache.push_back(dadFlag);
+				cache.push_back(arpCacheFlag);
+			}
+
+		syslog(LOG_INFO, "[-NCP-] NdProxyTable : Total %d NdProxy Entr%s", num_entries, (num_entries > 1) ? "ies" : "y");
+
+		data.push_back(num_entries >> 8);
+		data.push_back(num_entries & 0xff);
+		data.append(cache);
+
+		signal_property_changed(kWPANTUNDProperty_ThreadBbrNdProxyTable, data);
+		}
+
 	} else if (key == SPINEL_PROP_NET_PARTITION_ID) {
 		uint32_t paritition_id = 0;
 		spinel_datatype_unpack(value_data_ptr, value_data_len, SPINEL_DATATYPE_UINT32_S, &paritition_id);
@@ -5065,6 +5397,78 @@ SpinelNCPInstance::handle_ncp_spinel_value_is(spinel_prop_key_t key, const uint8
 		} else {
 			syslog(LOG_WARNING, "[-NCP-]: Failed to unpack network time update");
 		}
+	} else if (key == SPINEL_PROP_THREAD_DOMAIN_NAME) {
+		const char* value = NULL;
+		spinel_ssize_t len = spinel_datatype_unpack(value_data_ptr, value_data_len, "U", &value);
+
+		if ((len <= 0) || (value == NULL)) {
+			syslog(LOG_CRIT, "[-NCP-]: Got a corrupted Domain Name");
+			// TODO: Properly handle NCP Misbehavior
+			change_ncp_state(FAULT);
+		} else {
+			syslog(LOG_INFO, "[-NCP-]: Domain name \"%s\"", value);
+			if (mDomainName != value)
+			{
+				mDomainName = value;
+				signal_property_changed(kWPANTUNDProperty_ThreadDomainName, mDomainName);
+			}
+		}
+
+	} else if (key == SPINEL_PROP_THREAD_BACKBONE_COAP_PORT) {
+		uint16_t port;
+		spinel_datatype_unpack(value_data_ptr, value_data_len, SPINEL_DATATYPE_UINT16_S, &port);
+		syslog(LOG_CRIT, "[-NCP-]: Backbone coap port: %u", port);
+		signal_property_changed(kWPANTUNDProperty_ThreadBackboneCoapPort, port);
+	} else if (key == SPINEL_PROP_THREAD_BACKBONE_ROUTER_PRIMARY_STATE) {
+		uint8_t state;
+		spinel_datatype_unpack(value_data_ptr, value_data_len, SPINEL_DATATYPE_BOOL_S, &state);
+		syslog(LOG_CRIT, "[-NCP-]: BBR State: %s", state ? "Priamry" : "Secondary");
+		signal_property_changed(kWPANTUNDProperty_ThreadPrimaryState, state);
+
+	} else if (key == SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL) {
+		ThreadBbrDataset bbrData;
+		std::list<std::string> list;
+		syslog(LOG_CRIT, "[-NCP-]: local bbr dataset");
+		bbrData.set_from_spinel_frame(value_data_ptr, value_data_len);
+		bbrData.convert_to_string_list(list);
+
+		for (std::list<std::string>::iterator it = list.begin(); it != list.end(); it++)
+		{
+			syslog(LOG_CRIT, "[-NCP-]: %s", (*it).c_str());
+		}
+
+		{
+			Data data(0);
+			data.push_back(bbrData.mSequenceNumber.get());
+			// pack the reregistration delay in big endian.
+			data.push_back(bbrData.mReregistrationDelay.get() >> 8);
+			data.push_back(bbrData.mReregistrationDelay.get() & 0xff);
+
+			// pack the mlr timeout in big endian.
+			data.push_back(bbrData.mMlrTimeout.get() >> 24);
+			data.push_back(bbrData.mMlrTimeout.get() >> 16);
+			data.push_back(bbrData.mMlrTimeout.get() >> 8);
+			data.push_back(bbrData.mMlrTimeout.get() & 0xff);
+
+			signal_property_changed(kWPANTUNDProperty_ThreadLocalBbr, data);
+		}
+
+	} else if (key == SPINEL_PROP_THREAD_DOMAIN_PREFIX) {
+		struct in6_addr *addr = NULL;
+		uint8_t prefix_len = 0;
+
+		spinel_datatype_unpack(value_data_ptr, value_data_len, "6C", &addr, &prefix_len);
+
+		if (addr != NULL) {
+			char prefix_str[45] = {'\0'};
+			snprintf(prefix_str, sizeof(prefix_str), "%s/%d", in6_addr_to_string(*addr).c_str(), prefix_len);
+			syslog(LOG_INFO, "[-NCP-]: Domain prefix %s", prefix_str);
+
+			if ((prefix_len == 64) && 0 != memcmp(addr, mDomainPrefix, 8)) {
+				memcpy(mDomainPrefix, addr, 8);
+				signal_property_changed(kWPANTUNDProperty_ThreadDomainPrefix, prefix_str);
+			}
+		}
 	}
 
 bail:
@@ -5117,6 +5521,117 @@ SpinelNCPInstance::handle_ncp_spinel_value_inserted(spinel_prop_key_t key, const
 			syslog(LOG_INFO, "[-NCP-]: Neighbor(Router) entry added: %s", neighbor_entry.get_as_string().c_str());
 		}
 
+	} else if (key == SPINEL_PROP_THREAD_GROUP_TABLE) {
+		nl::Data data;
+		data.push_back(1);
+
+		{
+			struct in6_addr *ip6_addr = NULL;
+			uint16_t num = 0;
+			spinel_ssize_t len = 0;
+
+			len = spinel_datatype_unpack(
+					value_data_ptr,
+					value_data_len,
+					SPINEL_DATATYPE_UINT16_S,    // num
+					&num
+					);
+
+			syslog(LOG_INFO, "[-NCP-]: GroupTable %d entr%s added", num, num > 1 ? "ies" : "y");
+
+			__ASSERT_MACROS_check(len > 0);
+
+			value_data_ptr += len;
+			value_data_len -= len;
+
+			data.push_back(num >> 8);
+			data.push_back(num & 0xff);
+
+			while (value_data_len > 0)
+			{
+				len = spinel_datatype_unpack(
+					value_data_ptr,
+					value_data_len,
+						SPINEL_DATATYPE_IPv6ADDR_S,
+						&ip6_addr
+						);
+
+				__ASSERT_MACROS_check(len > 0);
+
+				syslog(LOG_INFO, "[-NCP-]: %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X",
+						ip6_addr->s6_addr[0], ip6_addr->s6_addr[1], ip6_addr->s6_addr[2], ip6_addr->s6_addr[3],
+						ip6_addr->s6_addr[4], ip6_addr->s6_addr[5], ip6_addr->s6_addr[6], ip6_addr->s6_addr[7],
+						ip6_addr->s6_addr[8], ip6_addr->s6_addr[9], ip6_addr->s6_addr[10], ip6_addr->s6_addr[11],
+						ip6_addr->s6_addr[12], ip6_addr->s6_addr[13], ip6_addr->s6_addr[14], ip6_addr->s6_addr[15]);
+
+				data.append(ip6_addr->s6_addr, sizeof(struct in6_addr));
+
+				value_data_ptr += len;
+				value_data_len -= len;
+			}
+		}
+		signal_property_changed(kWPANTUNDProperty_ThreadBbrGroupTable, data);
+
+	} else if (key == SPINEL_PROP_THREAD_NDPROXY_TABLE) {
+		nl::Data data;
+		data.push_back(1);
+
+		{
+			const struct in6_addr *ip6_addr = NULL;
+			const spinel_eui64_t *eui64 = NULL;
+			uint32_t timeSinceLastRegistration = 0;
+			bool     dadFlag;
+			bool arpCacheFlag;
+			spinel_ssize_t len = 0;
+
+			len = spinel_datatype_unpack(
+					value_data_ptr,
+					value_data_len,
+					(
+					 SPINEL_DATATYPE_IPv6ADDR_S
+					 SPINEL_DATATYPE_EUI64_S
+					 SPINEL_DATATYPE_UINT32_S
+					 SPINEL_DATATYPE_BOOL_S
+					 SPINEL_DATATYPE_BOOL_S
+					),
+					&ip6_addr,
+					&eui64,
+					&timeSinceLastRegistration,
+					&dadFlag,
+					&arpCacheFlag
+					);
+
+			syslog(LOG_INFO, "[-NCP-]: NdProxyTable 1 entry added");
+
+			__ASSERT_MACROS_check(len > 0);
+			syslog(LOG_INFO, "[-NCP-]: DUA %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X",
+					ip6_addr->s6_addr[0], ip6_addr->s6_addr[1], ip6_addr->s6_addr[2], ip6_addr->s6_addr[3],
+					ip6_addr->s6_addr[4], ip6_addr->s6_addr[5], ip6_addr->s6_addr[6], ip6_addr->s6_addr[7],
+					ip6_addr->s6_addr[8], ip6_addr->s6_addr[9], ip6_addr->s6_addr[10], ip6_addr->s6_addr[11],
+					ip6_addr->s6_addr[12], ip6_addr->s6_addr[13], ip6_addr->s6_addr[14], ip6_addr->s6_addr[15]);
+
+			syslog(LOG_INFO, "[-NCP-]: EUI64 %02X%02X%02X%02X%02X%02X%02X%02X",
+					eui64->bytes[0], eui64->bytes[1], eui64->bytes[2], eui64->bytes[3],
+					eui64->bytes[4], eui64->bytes[5], eui64->bytes[6], eui64->bytes[7]);
+
+			syslog(LOG_INFO, "[-NCP-]: Last Registration Time %04u", timeSinceLastRegistration);
+			syslog(LOG_INFO, "[-NCP-]: Dad flag %d (%s)", dadFlag, dadFlag ? "In progress" : "Done");
+				syslog(LOG_INFO, "[-NCP-]: In Arp Cache %d (%s)", arpCacheFlag, arpCacheFlag ? "True" : "False");
+
+				data.append(ip6_addr->s6_addr, sizeof(struct in6_addr));
+				data.append(eui64->bytes, sizeof(spinel_eui64_t));
+
+			// in big endian
+			data.push_back(timeSinceLastRegistration >> 24);
+			data.push_back(timeSinceLastRegistration >> 16);
+			data.push_back(timeSinceLastRegistration >> 8);
+			data.push_back(timeSinceLastRegistration & 0xff);
+
+			data.push_back(dadFlag);
+			data.push_back(arpCacheFlag);
+		}
+
+		signal_property_changed(kWPANTUNDProperty_ThreadBbrNdProxyTable, data);
 	} else if (key == SPINEL_PROP_MESHCOP_COMMISSIONER_ENERGY_SCAN_RESULT) {
 		spinel_ssize_t len;
 		uint32_t channel_mask;
@@ -5202,6 +5717,117 @@ SpinelNCPInstance::handle_ncp_spinel_value_removed(spinel_prop_key_t key, const 
 			syslog(LOG_INFO, "[-NCP-]: Neighbor(Router) entry removed: %s", neighbor_entry.get_as_string().c_str());
 		}
 
+	} else if (key == SPINEL_PROP_THREAD_GROUP_TABLE) {
+		nl::Data data;
+		data.push_back(0);
+
+		{
+			struct in6_addr *ip6_addr = NULL;
+			uint16_t num= 0;
+			spinel_ssize_t len = 0;
+
+			len = spinel_datatype_unpack(
+					value_data_ptr,
+					value_data_len,
+					SPINEL_DATATYPE_UINT16_S,    // num
+					&num
+					);
+
+			syslog(LOG_INFO, "[-NCP-]: GroupTable %d entr%s removed", num, num > 1 ? "ies" : "y");
+
+			__ASSERT_MACROS_check(len > 0);
+
+			data.push_back(num >> 8);
+			data.push_back(num & 0xff);
+
+			value_data_ptr += len;
+			value_data_len -= len;
+
+			while (value_data_len > 0)
+			{
+				len = spinel_datatype_unpack(
+					value_data_ptr,
+					value_data_len,
+						SPINEL_DATATYPE_IPv6ADDR_S,
+						&ip6_addr
+						);
+
+				__ASSERT_MACROS_check(len > 0);
+
+				syslog(LOG_INFO, "[-NCP-]: %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X",
+						ip6_addr->s6_addr[0], ip6_addr->s6_addr[1], ip6_addr->s6_addr[2], ip6_addr->s6_addr[3],
+						ip6_addr->s6_addr[4], ip6_addr->s6_addr[5], ip6_addr->s6_addr[6], ip6_addr->s6_addr[7],
+						ip6_addr->s6_addr[8], ip6_addr->s6_addr[9], ip6_addr->s6_addr[10], ip6_addr->s6_addr[11],
+						ip6_addr->s6_addr[12], ip6_addr->s6_addr[13], ip6_addr->s6_addr[14], ip6_addr->s6_addr[15]);
+
+				data.append(ip6_addr->s6_addr, sizeof(struct in6_addr));
+
+				value_data_ptr += len;
+				value_data_len -= len;
+			}
+		}
+		signal_property_changed(kWPANTUNDProperty_ThreadBbrGroupTable, data);
+
+	} else if (key == SPINEL_PROP_THREAD_NDPROXY_TABLE) {
+		nl::Data data;
+		data.push_back(0);
+
+		{
+			const struct in6_addr *ip6_addr = NULL;
+			const spinel_eui64_t *eui64 = NULL;
+			uint32_t timeSinceLastRegistration = 0;
+			bool     dadFlag;
+			bool arpCacheFlag;
+			spinel_ssize_t len = 0;
+
+			len = spinel_datatype_unpack(
+					value_data_ptr,
+					value_data_len,
+					(
+					 SPINEL_DATATYPE_IPv6ADDR_S
+					 SPINEL_DATATYPE_EUI64_S
+					 SPINEL_DATATYPE_UINT32_S
+					 SPINEL_DATATYPE_BOOL_S
+					 SPINEL_DATATYPE_BOOL_S
+					),
+					&ip6_addr,
+					&eui64,
+					&timeSinceLastRegistration,
+					&dadFlag,
+					&arpCacheFlag
+					);
+
+			syslog(LOG_INFO, "[-NCP-]: NdProxyTable 1 entry removed");
+
+			__ASSERT_MACROS_check(len > 0);
+			syslog(LOG_INFO, "[-NCP-]: %02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X",
+					ip6_addr->s6_addr[0], ip6_addr->s6_addr[1], ip6_addr->s6_addr[2], ip6_addr->s6_addr[3],
+					ip6_addr->s6_addr[4], ip6_addr->s6_addr[5], ip6_addr->s6_addr[6], ip6_addr->s6_addr[7],
+					ip6_addr->s6_addr[8], ip6_addr->s6_addr[9], ip6_addr->s6_addr[10], ip6_addr->s6_addr[11],
+					ip6_addr->s6_addr[12], ip6_addr->s6_addr[13], ip6_addr->s6_addr[14], ip6_addr->s6_addr[15]);
+
+			syslog(LOG_INFO, "[-NCP-]: EUI64 %02X%02X%02X%02X%02X%02X%02X%02X",
+					eui64->bytes[0], eui64->bytes[1], eui64->bytes[2], eui64->bytes[3],
+					eui64->bytes[4], eui64->bytes[5], eui64->bytes[6], eui64->bytes[7]);
+
+			syslog(LOG_INFO, "[-NCP-]: Last Registration Time %04u", timeSinceLastRegistration);
+			syslog(LOG_INFO, "[-NCP-]: Dad flag %d (%s)", dadFlag, dadFlag ? "In progress" : "Done");
+				syslog(LOG_INFO, "[-NCP-]: In Arp Cache %d (%s)", arpCacheFlag, arpCacheFlag ? "True" : "False");
+
+				data.append(ip6_addr->s6_addr, sizeof(struct in6_addr));
+				data.append(eui64->bytes, sizeof(spinel_eui64_t));
+
+			// in big endian
+			data.push_back(timeSinceLastRegistration >> 24);
+			data.push_back(timeSinceLastRegistration >> 16);
+			data.push_back(timeSinceLastRegistration >> 8);
+			data.push_back(timeSinceLastRegistration & 0xff);
+
+			data.push_back(dadFlag);
+			data.push_back(arpCacheFlag);
+		}
+
+		signal_property_changed(kWPANTUNDProperty_ThreadBbrNdProxyTable, data);
 	}
 
 	process_event(EVENT_NCP_PROP_VALUE_REMOVED, key, value_data_ptr, value_data_len);

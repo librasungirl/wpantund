@@ -96,6 +96,9 @@ NCPInstanceBase::NCPInstanceBase(const Settings& settings):
 	memset(mMACAddress, 0, sizeof(mMACAddress));
 	memset(mMACHardwareAddress, 0, sizeof(mMACHardwareAddress));
 
+	memset(mDomainPrefix, 0, sizeof(mDomainPrefix));
+	mDomainName = "Thread";
+
 	if (!settings.empty()) {
 		Settings::const_iterator iter;
 

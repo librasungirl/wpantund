@@ -711,3 +711,248 @@ ThreadDataset::convert_to_spinel_frame(Data &frame, bool include_value)
 		));
 	}
 }
+
+void
+ThreadBbrDataset::clear(void)
+{
+	mSequenceNumber.clear();
+	mReregistrationDelay.clear();
+	mMlrTimeout.clear();
+	mServer.clear();
+}
+
+void
+ThreadBbrDataset::convert_to_valuemap(ValueMap &map)
+{
+	map.clear();
+
+	if (mSequenceNumber.has_value()) {
+		map[kWPANTUNDProperty_BbrSequenceNumber] = mSequenceNumber.get();
+	}
+
+	if (mReregistrationDelay.has_value()) {
+		map[kWPANTUNDProperty_BbrReregistrationDelay] = mReregistrationDelay.get();
+	}
+
+	if (mMlrTimeout.has_value()) {
+		map[kWPANTUNDProperty_BbrMlrTimeout] = mMlrTimeout.get();
+	}
+
+	if (mServer.has_value()) {
+		map[kWPANTUNDProperty_BbrServer] = mServer.get();
+	}
+}
+
+void
+ThreadBbrDataset::convert_to_string_list(std::list<std::string> &list)
+{
+	char str[256];
+	list.clear();
+
+	if (mSequenceNumber.has_value()) {
+		snprintf(str, sizeof(str), "%-8s =  0x%02X (%d)",
+				kWPANTUNDProperty_BbrSequenceNumber,
+				mSequenceNumber.get(),
+				mSequenceNumber.get());
+		list.push_back(str);
+	}
+
+	if (mReregistrationDelay.has_value()) {
+		snprintf(str, sizeof(str), "%-8s =  0x%04X (%d)s",
+				kWPANTUNDProperty_BbrReregistrationDelay,
+				mReregistrationDelay.get(),
+				mReregistrationDelay.get());
+		list.push_back(str);
+	}
+
+	if (mMlrTimeout.has_value()) {
+		snprintf(str, sizeof(str), "%-8s =  0x%08X (%d)s",
+				kWPANTUNDProperty_BbrMlrTimeout,
+				mMlrTimeout.get(),
+				mMlrTimeout.get());
+		list.push_back(str);
+	}
+
+	if (mServer.has_value()) {
+		snprintf(str, sizeof(str), "%-8s =  0x%04X", kWPANTUNDProperty_BbrServer, mServer.get());
+		list.push_back(str);
+	}
+}
+
+int
+ThreadBbrDataset::set_from_spinel_frame(const uint8_t *data_in, spinel_size_t data_len)
+{
+	int ret = kWPANTUNDStatus_Ok;
+	uint8_t seqno;
+	uint16_t delay;
+	uint32_t timeout;
+	uint16_t server16;
+	spinel_size_t len;
+
+	const uint8_t *struct_data;
+
+	while (data_len > 0) {
+		spinel_ssize_t len = 0;
+		const uint8_t *struct_data;
+		spinel_size_t struct_len;
+
+		len = spinel_datatype_unpack(
+			data_in,
+			data_len,
+			SPINEL_DATATYPE_DATA_WLEN_S,
+			&struct_data,
+			&struct_len
+		);
+
+		require_action(len > 0, bail, ret = kWPANTUNDStatus_Failure);
+
+		ret = parse_dataset_entry(struct_data, struct_len);
+		require_noerr(ret, bail);
+
+		data_in += len;
+		data_len -= len;
+	}
+
+bail:
+	if (ret != kWPANTUNDStatus_Ok) {
+		clear();
+	}
+
+	return ret;
+}
+
+void
+//ThreadBbrDataset::convert_to_spinel_frame(Data &frame, bool include_value)
+ThreadBbrDataset::convert_to_spinel_frame(Data &frame)
+{
+	frame.clear();
+	if (mSequenceNumber.has_value()) {
+		frame.append(SpinelPackData(
+					SPINEL_DATATYPE_STRUCT_S(SPINEL_DATATYPE_UINT_PACKED_S SPINEL_DATATYPE_UINT8_S),
+					SPINEL_PROP_THREAD_BACKBONE_ROUTER_SEQUENCE_NUMBER,
+					mSequenceNumber.get()
+					));
+	}
+
+	if (mReregistrationDelay.has_value()) {
+		frame.append(SpinelPackData(
+					SPINEL_DATATYPE_STRUCT_S(SPINEL_DATATYPE_UINT_PACKED_S SPINEL_DATATYPE_UINT16_S),
+					SPINEL_PROP_THREAD_BACKBONE_ROUTER_REREGISTRATION_DELAY,
+					mReregistrationDelay.get()
+					));
+	}
+
+	if (mMlrTimeout.has_value()) {
+		frame.append(SpinelPackData(
+					SPINEL_DATATYPE_STRUCT_S(SPINEL_DATATYPE_UINT_PACKED_S SPINEL_DATATYPE_UINT32_S),
+					SPINEL_PROP_THREAD_BACKBONE_ROUTER_MLR_TIMEOUT,
+					mMlrTimeout.get()
+					));
+	}
+}
+
+int
+ThreadBbrDataset::parse_dataset_entry(const uint8_t *data_in, spinel_size_t data_len)
+{
+	int ret = kWPANTUNDStatus_Ok;
+	unsigned int prop_key;
+	const uint8_t *value_data;
+	spinel_size_t value_len;
+	spinel_ssize_t len = 0;
+
+	len = spinel_datatype_unpack(
+		data_in,
+		data_len,
+		(
+			SPINEL_DATATYPE_UINT_PACKED_S
+			SPINEL_DATATYPE_DATA_S
+		),
+		&prop_key,
+		&value_data,
+		&value_len
+	);
+
+	require_action(len > 0, bail, ret = kWPANTUNDStatus_Failure);
+
+	switch (static_cast<spinel_prop_key_t>(prop_key)) {
+
+	case SPINEL_PROP_THREAD_BACKBONE_ROUTER_SEQUENCE_NUMBER:
+		{
+			uint8_t seqno;
+
+			len = spinel_datatype_unpack(
+				value_data,
+				value_len,
+				SPINEL_DATATYPE_UINT8_S,
+				&seqno
+			);
+
+			require_action(len > 0, bail, ret = kWPANTUNDStatus_Failure);
+			mSequenceNumber = seqno;
+		}
+		break;
+
+	case SPINEL_PROP_THREAD_BACKBONE_ROUTER_REREGISTRATION_DELAY:
+		{
+			uint16_t delay;
+
+			len = spinel_datatype_unpack(
+				value_data,
+				value_len,
+				SPINEL_DATATYPE_UINT16_S,
+				&delay
+			);
+
+			require_action(len > 0, bail, ret = kWPANTUNDStatus_Failure);
+//			mReregistrationDelay.set(delay);
+			mReregistrationDelay = delay;
+		}
+		break;
+
+	case SPINEL_PROP_THREAD_BACKBONE_ROUTER_MLR_TIMEOUT:
+		{
+			uint32_t timeout;
+
+			len = spinel_datatype_unpack(
+				value_data,
+				value_len,
+				SPINEL_DATATYPE_UINT32_S,
+				&timeout
+			);
+
+			require_action(len > 0, bail, ret = kWPANTUNDStatus_Failure);
+//			mMlrTimeout.set(timeout);
+			mMlrTimeout = timeout;
+		}
+		break;
+
+	case SPINEL_PROP_THREAD_BACKBONE_ROUTER_SERVER16:
+		{
+			uint16_t server;
+
+			len = spinel_datatype_unpack(
+				value_data,
+				value_len,
+				SPINEL_DATATYPE_UINT16_S,
+				&server
+			);
+
+			require_action(len > 0, bail, ret = kWPANTUNDStatus_Failure);
+		// mServer.set(server);
+			mServer = server;
+		}
+		break;
+
+	default:
+		syslog(
+			LOG_WARNING,
+			"Unsupported/unknown property key in a BBR Dataset: %s (%d)",
+			spinel_prop_key_to_cstr(static_cast<spinel_prop_key_t>(prop_key)),
+			prop_key
+		);
+		break;
+	}
+
+bail:
+	return ret;
+}

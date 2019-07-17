@@ -43,6 +43,7 @@ static const arg_list_item_t join_option_list[] = {
 		"Join as a specific node type"},
 	{'p', "panid", NULL, "Specify a specific PAN ID"},
 	{'x', "xpanid", NULL, "Specify a specific Extended PAN ID"},
+	{'a', "ativetimestamp", "activetimestamp", "Set local activetimestamp"},
 	{'c', "channel", NULL, "Specify a specific channel"},
 	{'k', "key", NULL, "Specify the network key"},
 	{'n', "name", NULL, "Forces the input argument to be treated as <network name> instead of scan index"
@@ -65,6 +66,7 @@ int tool_cmd_join(int argc, char* argv[])
 	int scanned_network_index = -1;
 	const char *network_name = NULL;
 	const char *node_type = kWPANTUNDNodeType_EndDevice;
+	uint64_t activetimestamp = 0;
 	uint16_t channel = 0;
 	uint16_t panid = 0;
 	uint64_t xpanid = 0;
@@ -73,6 +75,7 @@ int tool_cmd_join(int argc, char* argv[])
 	bool has_panid = false;
 	bool has_xpanid = false;
 	bool has_network_key = false;
+	bool has_activetimestamp = false;
 
 	dbus_error_init(&error);
 
@@ -83,6 +86,7 @@ int tool_cmd_join(int argc, char* argv[])
 			{"type", required_argument, 0, 'T'},
 			{"panid", required_argument, 0, 'p'},
 			{"xpanid", required_argument, 0, 'x'},
+			{"activetimestamp", required_argument, 0, 'a'},
 			{"channel", required_argument, 0, 'c'},
 			{"key", required_argument, 0, 'k'},
 			{"name", no_argument, 0, 'n'},
@@ -92,7 +96,7 @@ int tool_cmd_join(int argc, char* argv[])
 		int option_index = 0;
 		int c;
 
-		c = getopt_long(argc, argv, "ht:T:x:p:c:k:n", long_options, &option_index);
+		c = getopt_long(argc, argv, "ht:T:x:p:a:c:k:n", long_options, &option_index);
 
 		if (c == -1) {
 			break;
@@ -116,6 +120,11 @@ int tool_cmd_join(int argc, char* argv[])
 		case 'x':
 			has_xpanid = true;
 			xpanid = strtoull(optarg, NULL, 16);
+			break;
+
+		case 'a':
+			has_activetimestamp= true;
+			activetimestamp = strtoull(optarg, NULL, 16);
 			break;
 
 		case 'c':
@@ -179,6 +188,10 @@ int tool_cmd_join(int argc, char* argv[])
 			if (has_channel) {
 				fprintf(stderr, "%s: warning: Specified channel will be overwritten by scanned network info.\n",
 					argv[0]);
+			}
+
+			if (has_activetimestamp) {
+				fprintf(stdout, ", activetimestamp:0x%016llX", (unsigned long long)activetimestamp);
 			}
 
 			has_panid = true;
@@ -246,6 +259,10 @@ int tool_cmd_join(int argc, char* argv[])
 
 	if (scanned_network_index != -1) {
 		fprintf(stdout, " [scanned network index %d]", scanned_network_index);
+	}
+
+	if (has_activetimestamp) {
+		fprintf(stdout, ", activetimestamp:0x%016llX", (unsigned long long)activetimestamp);
 	}
 
 	fprintf(stdout, "\n");
@@ -318,6 +335,14 @@ int tool_cmd_join(int argc, char* argv[])
 			kWPANTUNDProperty_NetworkKey,
 			network_key,
 			sizeof(network_key)
+		);
+	}
+
+	if (has_activetimestamp) {
+		append_dbus_dict_entry_basic(
+			&dict_iter,
+			kWPANTUNDProperty_DatasetActiveTimestamp,
+			DBUS_TYPE_UINT64, &activetimestamp
 		);
 	}
 

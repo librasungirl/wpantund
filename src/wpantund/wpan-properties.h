@@ -138,6 +138,21 @@
 #define kWPANTUNDProperty_ThreadParent                          "Thread:Parent"
 #define kWPANTUNDProperty_ThreadParentAsValMap                  "Thread:Parent:AsValMap"
 
+#define kWPANTUNDProperty_ThreadBackboneInterface               "Thread:Backbone:Interface"
+#define kWPANTUNDProperty_ThreadBackboneCoapPort                "Thread:Backbone:CoapPort"
+#define kWPANTUNDProperty_ThreadPrimaryBbr                      "Thread:Bbr:Primary"
+#define kWPANTUNDProperty_ThreadLocalBbr                        "Thread:Bbr:Local"
+#define kWPANTUNDProperty_ThreadBbrGroupTable                   "Thread:Bbr:GroupTable"
+#define kWPANTUNDProperty_ThreadBbrNdProxyTable                 "Thread:Bbr:NdProxyTable"
+#define kWPANTUNDProperty_ThreadDomainName                      "Thread:Domain:Name"
+#define kWPANTUNDProperty_ThreadDomainPrefix                    "Thread:Domain:Prefix"
+#define kWPANTUNDProperty_ThreadPrimaryState                    "Thread:Primary:State"
+
+#define kWPANTUNDProperty_BbrSequenceNumber                     "Bbr:SequenceNumber"
+#define kWPANTUNDProperty_BbrReregistrationDelay                "Bbr:ReregistrationDelay"
+#define kWPANTUNDProperty_BbrMlrTimeout                         "Bbr:MlrTimeout"
+#define kWPANTUNDProperty_BbrServer                             "Bbr:Server"
+
 #define kWPANTUNDProperty_DatasetActiveTimestamp                "Dataset:ActiveTimestamp"
 #define kWPANTUNDProperty_DatasetPendingTimestamp               "Dataset:PendingTimestamp"
 #define kWPANTUNDProperty_DatasetMasterKey                      "Dataset:MasterKey"

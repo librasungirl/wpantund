@@ -326,6 +326,31 @@ nl::wpantund::SpinelNCPTaskJoin::vprocess_event(int event, va_list args)
 		require_noerr(ret, on_error);
 	}
 
+	if (mOptions.count(kWPANTUNDProperty_DatasetActiveTimestamp)) {
+		{
+			uint64_t timestamp(any_to_uint64(mOptions[kWPANTUNDProperty_DatasetActiveTimestamp]));
+			mNextCommand = SpinelPackData(SPINEL_FRAME_PACK_CMD_PROP_VALUE_SET(SPINEL_DATATYPE_NULL_S), SPINEL_PROP_THREAD_ACTIVE_DATASET);
+			mNextCommand.append(SpinelPackData(
+						SPINEL_DATATYPE_STRUCT_S(SPINEL_DATATYPE_UINT_PACKED_S SPINEL_DATATYPE_UINT64_S),
+						SPINEL_PROP_DATASET_ACTIVE_TIMESTAMP,
+						&timestamp,
+						8
+						)
+					);
+
+			mNextCommand.append(SpinelPackData(
+				SPINEL_DATATYPE_STRUCT_S(SPINEL_DATATYPE_UINT_PACKED_S SPINEL_DATATYPE_UINT64_S),
+				SPINEL_PROP_DATASET_ACTIVE_TIMESTAMP,
+				timestamp
+			));
+		}
+
+		EH_SPAWN(&mSubPT, vprocess_send_command(event, args));
+
+		ret = mNextCommandRet;
+
+		require_noerr(ret, on_error);
+	}
 
 	// Now bring up the network by bringing up the interface and the stack.
 

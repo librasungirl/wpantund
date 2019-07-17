@@ -37,6 +37,7 @@ const char form_cmd_syntax[] = "[args] <network-name>";
 static const arg_list_item_t form_option_list[] = {
 	{'h', "help", NULL, "Print Help"},
 	{'t', "timeout", "ms", "Set timeout period"},
+	{'a', "ativetimestamp", "activetimestamp", "Set local activetimestamp"},
 	{'c', "channel", "channel", "Set the desired channel"},
 	{'m', "channel-mask", "mask", "Specify a channel mask (channel will be chosen randomly from given mask)"},
 	{'p', "panid", "panid", "Specify a specific PAN ID"},
@@ -62,6 +63,7 @@ int tool_cmd_form(int argc, char *argv[])
 	DBusMessageIter dict_iter;
 
 	const char *network_name = NULL;
+	uint64_t activetimestamp = 0;
 	uint16_t channel = 0;
 	uint32_t channel_mask = 0;
 	uint16_t panid = 0;
@@ -71,6 +73,7 @@ int tool_cmd_form(int argc, char *argv[])
 	const char *node_type = kWPANTUNDNodeType_Router;
 	uint8_t mesh_local_prefix[WPANCTL_PREFIX_SIZE];
 	uint8_t legacy_prefix[WPANCTL_PREFIX_SIZE];
+	bool has_activetimestamp = false;
 	bool has_channel = false;
 	bool has_channel_mask = false;
 	bool has_panid = false;
@@ -87,6 +90,7 @@ int tool_cmd_form(int argc, char *argv[])
 		static struct option long_options[] = {
 			{"help", no_argument, 0, 'h'},
 			{"timeout", required_argument, 0, 't'},
+			{"activetimestamp", required_argument, 0, 'a'},
 			{"channel", required_argument, 0, 'c'},
 			{"channel-mask", required_argument, 0, 'm'},
 			{"panid", required_argument, 0, 'p'},
@@ -103,7 +107,7 @@ int tool_cmd_form(int argc, char *argv[])
 		int option_index = 0;
 		int c;
 
-		c = getopt_long(argc, argv, "ht:c:m:p:x:k:i:u:M:L:T:", long_options, &option_index);
+		c = getopt_long(argc, argv, "ht:a:c:m:p:x:k:i:u:M:L:T:", long_options, &option_index);
 
 		if (c == -1) {
 			break;
@@ -117,6 +121,11 @@ int tool_cmd_form(int argc, char *argv[])
 
 		case 't':
 			timeout = strtol(optarg, NULL, 0);
+			break;
+
+		case 'a':
+			has_activetimestamp= true;
+			activetimestamp = strtoull(optarg, NULL, 16);
 			break;
 
 		case 'c':
@@ -262,6 +271,10 @@ int tool_cmd_form(int argc, char *argv[])
 		fprintf(stdout, ", legacy-prefix:\"%s\"", address_string);
 	}
 
+	if (has_activetimestamp) {
+		fprintf(stdout, ", activetimestamp:0x%016llX", (unsigned long long)activetimestamp);
+	}
+
 	fprintf(stdout, "\n");
 
 	// Prepare DBus connection
@@ -301,6 +314,14 @@ int tool_cmd_form(int argc, char *argv[])
 			&dict_iter,
 			kWPANTUNDProperty_NetworkNodeType,
 			DBUS_TYPE_STRING, &node_type
+		);
+	}
+
+	if (has_activetimestamp) {
+		append_dbus_dict_entry_basic(
+			&dict_iter,
+			kWPANTUNDProperty_DatasetActiveTimestamp,
+			DBUS_TYPE_UINT64, &activetimestamp
 		);
 	}
 

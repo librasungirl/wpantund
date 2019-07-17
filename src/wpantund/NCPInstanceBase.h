@@ -797,6 +797,9 @@ private:
 
 	StatCollector mStatCollector;  // Statistic collector
 
+	uint8_t mDomainPrefix[8];
+	std::string mDomainName;
+
 }; // class NCPInstance
 
 }; // namespace wpantund

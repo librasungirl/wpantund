@@ -755,6 +755,9 @@ protected:
 
 	WPAN::NetworkInstance mCurrentNetworkInstance;
 
+	uint8_t mDomainPrefix[8];
+	std::string mDomainName;
+
 	NodeType mNodeType;
 
 	int mFailureCount;
@@ -796,9 +799,6 @@ private:
 	NetworkRetain mNetworkRetain;
 
 	StatCollector mStatCollector;  // Statistic collector
-
-	uint8_t mDomainPrefix[8];
-	std::string mDomainName;
 
 }; // class NCPInstance
 

@@ -127,6 +127,7 @@
 #define kWPANTUNDProperty_ThreadRouterRoleEnabled               "Thread:RouterRole:Enabled"
 #define kWPANTUNDProperty_ThreadConfigFilterRLOCAddresses       "Thread:Config:FilterRLOCAddresses"
 #define kWPANTUNDProperty_ThreadConfigFilterALOCAddresses       "Thread:Config:FilterALOCAddresses"
+#define kWPANTUNDProperty_ThreadConfigDuaResponse               "Thread:Config:DuaResponse"
 #define kWPANTUNDProperty_ThreadRouterUpgradeThreshold          "Thread:RouterUpgradeThreshold"
 #define kWPANTUNDProperty_ThreadRouterDowngradeThreshold        "Thread:RouterDowngradeThreshold"
 #define kWPANTUNDProperty_ThreadActiveDataset                   "Thread:ActiveDataset"

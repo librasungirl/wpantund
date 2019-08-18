@@ -737,6 +737,11 @@ static spinel_ssize_t spinel_datatype_vpack_(uint8_t *     data_out,
     // Buffer length sanity check
     require_action(data_len_max <= SPINEL_MAX_PACK_LENGTH, bail, (ret = -1, errno = EINVAL));
 
+    if (data_out == NULL)
+    {
+        data_len_max = 0;
+    }
+
     for (; *pack_format != 0; pack_format = spinel_next_packed_datatype(pack_format))
     {
         if (*pack_format == ')')
@@ -998,7 +1003,10 @@ static spinel_ssize_t spinel_datatype_vpack_(uint8_t *     data_out,
                 data_out += size_len;
                 data_len_max -= (spinel_size_t)size_len;
 
-                memcpy(data_out, arg, data_size_arg);
+                if (data_out && arg)
+                {
+                    memcpy(data_out, arg, data_size_arg);
+                }
 
                 data_out += data_size_arg;
                 data_len_max -= data_size_arg;
@@ -1106,7 +1114,7 @@ spinel_ssize_t spinel_datatype_vpack(uint8_t *     data_out,
 // ----------------------------------------------------------------------------
 // MARK: -
 
-// **** LCOV_EXCL_START ****
+// LCOV_EXCL_START
 
 const char *spinel_command_to_cstr(unsigned int command)
 {
@@ -1805,6 +1813,10 @@ const char *spinel_prop_key_to_cstr(spinel_prop_key_t prop_key)
 
     case SPINEL_PROP_THREAD_NDPROXY_TABLE:
         ret = "PROP_THREAD_NDPROXY_TABLE";
+        break;
+
+    case SPINEL_PROP_THREAD_REFERENCE_DEVICE_DUA_RSP:
+        ret = "PROP_THREAD_REFERENCE_DEVICE_DUA_RSP";
         break;
 
     case SPINEL_PROP_MESHCOP_JOINER_STATE:
@@ -2663,7 +2675,7 @@ const char *spinel_capability_to_cstr(unsigned int capability)
     return ret;
 }
 
-// **** LCOV_EXCL_STOP ****
+// LCOV_EXCL_STOP
 
 /* -------------------------------------------------------------------------- */
 

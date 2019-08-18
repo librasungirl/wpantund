@@ -330,6 +330,7 @@ private:
 	void set_prop_DatasetCommand(const boost::any &value, CallbackWithStatus cb);
 
 	void set_prop_ThreadDomainPrefix(const boost::any &value, CallbackWithStatus cb);
+	void set_prop_ThreadConfigDuaResponse(const boost::any &value, CallbackWithStatus cb);
 	void set_prop_BbrSequenceNumber(const boost::any &value, CallbackWithStatus cb);
 	void set_prop_BbrReregistrationDelay(const boost::any &value, CallbackWithStatus cb);
 	void set_prop_BbrMlrTimeout(const boost::any &value, CallbackWithStatus cb);
@@ -337,6 +338,7 @@ private:
 
 	void set_prop_DaemonTickleOnHostDidWake(const boost::any &value, CallbackWithStatus cb);
 	void set_prop_MACFilterFixedRssi(const boost::any &value, CallbackWithStatus cb);
+	void set_prop_ThreadAddressCacheTable(const boost::any &value, CallbackWithStatus cb);
 
 private:
 	void check_capability_prop_update(const boost::any &value, CallbackWithStatus cb, const std::string &prop_name,

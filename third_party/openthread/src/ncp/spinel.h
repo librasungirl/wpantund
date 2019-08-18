@@ -2823,6 +2823,18 @@ typedef enum
      */
     SPINEL_PROP_THREAD_NDPROXY_TABLE = SPINEL_PROP_THREAD_EXT__BEGIN + 72,
 
+    /// Configure BBR's DUA rsp for next DUA.req from specified device, only for certification purpose.
+    /** Format: [EL]] - Write only
+     *
+     * Data per item is:
+     *
+     *  `E`: Mesh Local IID of the specified device.
+     *  `L`: Status value to respond with
+     *
+     */
+
+    SPINEL_PROP_THREAD_REFERENCE_DEVICE_DUA_RSP = SPINEL_PROP_THREAD_EXT__BEGIN + 73,
+
     SPINEL_PROP_THREAD_EXT__END = 0x1600,
 
     SPINEL_PROP_IPV6__BEGIN = 0x60,

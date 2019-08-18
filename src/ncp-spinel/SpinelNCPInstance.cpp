@@ -3319,6 +3319,9 @@ SpinelNCPInstance::regsiter_all_set_handlers(void)
 		kWPANTUNDProperty_ThreadDomainPrefix,
 		boost::bind(&SpinelNCPInstance::set_prop_ThreadDomainPrefix, this, _1, _2));
 	register_set_handler(
+		kWPANTUNDProperty_ThreadConfigDuaResponse,
+		boost::bind(&SpinelNCPInstance::set_prop_ThreadConfigDuaResponse, this, _1, _2));
+	register_set_handler(
 		kWPANTUNDProperty_BbrSequenceNumber,
 		boost::bind(&SpinelNCPInstance::set_prop_BbrSequenceNumber, this, _1, _2));
 	register_set_handler(
@@ -3336,6 +3339,9 @@ SpinelNCPInstance::regsiter_all_set_handlers(void)
 	register_set_handler(
 		kWPANTUNDProperty_MACFilterFixedRssi,
 		boost::bind(&SpinelNCPInstance::set_prop_MACFilterFixedRssi, this, _1, _2));
+	register_set_handler(
+		kWPANTUNDProperty_ThreadAddressCacheTable,
+		boost::bind(&SpinelNCPInstance::set_prop_ThreadAddressCacheTable, this, _1, _2));
 }
 
 int
@@ -3771,6 +3777,34 @@ SpinelNCPInstance::set_prop_ThreadDomainPrefix(const boost::any &value, Callback
 }
 
 void
+SpinelNCPInstance::set_prop_ThreadConfigDuaResponse(const boost::any &value, CallbackWithStatus cb)
+{
+	Data packet = any_to_data(value);
+
+	if (packet.size() >= sizeof(spinel_eui64_t) + sizeof(uint8_t)) {
+		spinel_eui64_t mliid;
+		uint8_t status;
+
+		memcpy(&mliid, packet.data(), sizeof(spinel_eui64_t));
+		packet.pop_front(sizeof(spinel_eui64_t));
+		status = packet[0];
+
+		start_new_task(SpinelNCPTaskSendCommand::Factory(this)
+				.set_callback(cb)
+				.add_command(SpinelPackData(
+						SPINEL_FRAME_PACK_CMD_PROP_VALUE_SET(SPINEL_DATATYPE_EUI64_S SPINEL_DATATYPE_UINT8_S),
+						SPINEL_PROP_THREAD_REFERENCE_DEVICE_DUA_RSP,
+						&mliid,
+						status
+						))
+				.finish()
+				);
+	} else {
+		cb(kWPANTUNDStatus_InvalidArgument);
+	}
+}
+
+void
 SpinelNCPInstance::set_prop_BbrSequenceNumber(const boost::any &value, CallbackWithStatus cb)
 {
 	mBbrDataset.mSequenceNumber.set(static_cast<uint8_t>(any_to_int(value)));
@@ -3838,6 +3872,17 @@ SpinelNCPInstance::set_prop_MACFilterFixedRssi(const boost::any &value, Callback
 	} else {
 		cb(kWPANTUNDStatus_FeatureNotSupported);
 	}
+}
+
+void SpinelNCPInstance::set_prop_ThreadAddressCacheTable(const boost::any &value, CallbackWithStatus cb)
+{
+	// currently the value doesn't matter, just clear
+	bool mClearCache = any_to_bool(value);
+	start_new_task(SpinelNCPTaskSendCommand::Factory(this)
+			.set_callback(cb)
+			.add_command(SpinelPackData(SPINEL_FRAME_PACK_CMD_PROP_VALUE_SET(SPINEL_DATATYPE_BOOL_S),
+					SPINEL_PROP_THREAD_ADDRESS_CACHE_TABLE, &mClearCache))
+			.finish());
 }
 
 void
@@ -5422,7 +5467,7 @@ SpinelNCPInstance::handle_ncp_spinel_value_is(spinel_prop_key_t key, const uint8
 	} else if (key == SPINEL_PROP_THREAD_BACKBONE_ROUTER_PRIMARY_STATE) {
 		uint8_t state;
 		spinel_datatype_unpack(value_data_ptr, value_data_len, SPINEL_DATATYPE_BOOL_S, &state);
-		syslog(LOG_CRIT, "[-NCP-]: BBR State: %s", state ? "Priamry" : "Secondary");
+		syslog(LOG_CRIT, "[-NCP-]: BBR State: %s", state ? "Primary" : "Secondary");
 		signal_property_changed(kWPANTUNDProperty_ThreadPrimaryState, state);
 
 	} else if (key == SPINEL_PROP_THREAD_BACKBONE_ROUTER_LOCAL) {
@@ -5527,13 +5572,13 @@ SpinelNCPInstance::handle_ncp_spinel_value_inserted(spinel_prop_key_t key, const
 
 		{
 			struct in6_addr *ip6_addr = NULL;
-			uint16_t num = 0;
+			uint8_t num = 0;
 			spinel_ssize_t len = 0;
 
 			len = spinel_datatype_unpack(
 					value_data_ptr,
 					value_data_len,
-					SPINEL_DATATYPE_UINT16_S,    // num
+					SPINEL_DATATYPE_UINT8_S,    // num
 					&num
 					);
 
@@ -5544,8 +5589,7 @@ SpinelNCPInstance::handle_ncp_spinel_value_inserted(spinel_prop_key_t key, const
 			value_data_ptr += len;
 			value_data_len -= len;
 
-			data.push_back(num >> 8);
-			data.push_back(num & 0xff);
+			data.push_back(num);
 
 			while (value_data_len > 0)
 			{
@@ -5723,13 +5767,13 @@ SpinelNCPInstance::handle_ncp_spinel_value_removed(spinel_prop_key_t key, const 
 
 		{
 			struct in6_addr *ip6_addr = NULL;
-			uint16_t num= 0;
+			uint8_t num= 0;
 			spinel_ssize_t len = 0;
 
 			len = spinel_datatype_unpack(
 					value_data_ptr,
 					value_data_len,
-					SPINEL_DATATYPE_UINT16_S,    // num
+					SPINEL_DATATYPE_UINT8_S,    // num
 					&num
 					);
 
@@ -5737,8 +5781,7 @@ SpinelNCPInstance::handle_ncp_spinel_value_removed(spinel_prop_key_t key, const 
 
 			__ASSERT_MACROS_check(len > 0);
 
-			data.push_back(num >> 8);
-			data.push_back(num & 0xff);
+			data.push_back(num);
 
 			value_data_ptr += len;
 			value_data_len -= len;

@@ -337,6 +337,7 @@ private:
 
 	void set_prop_DaemonTickleOnHostDidWake(const boost::any &value, CallbackWithStatus cb);
 	void set_prop_MACFilterFixedRssi(const boost::any &value, CallbackWithStatus cb);
+	void set_prop_ThreadAddressCacheTable(const boost::any &value, CallbackWithStatus cb);
 
 private:
 	void check_capability_prop_update(const boost::any &value, CallbackWithStatus cb, const std::string &prop_name,

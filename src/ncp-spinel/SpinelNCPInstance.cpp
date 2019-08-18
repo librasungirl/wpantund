@@ -2868,6 +2868,8 @@ void SpinelNCPInstance::regsiter_all_set_handlers(void)
                          boost::bind(&SpinelNCPInstance::set_prop_DaemonTickleOnHostDidWake, this, _1, _2));
     register_set_handler(kWPANTUNDProperty_MACFilterFixedRssi,
                          boost::bind(&SpinelNCPInstance::set_prop_MACFilterFixedRssi, this, _1, _2));
+    register_set_handler(kWPANTUNDProperty_ThreadAddressCacheTable,
+            boost::bind(&SpinelNCPInstance::set_prop_ThreadAddressCacheTable, this, _1, _2));
 }
 
 int SpinelNCPInstance::convert_value_NCPMCUPowerState(const boost::any &value, boost::any &value_out)
@@ -3318,6 +3320,17 @@ void SpinelNCPInstance::set_prop_MACFilterFixedRssi(const boost::any &value, Cal
     {
         cb(kWPANTUNDStatus_FeatureNotSupported);
     }
+}
+
+void SpinelNCPInstance::set_prop_ThreadAddressCacheTable(const boost::any &value, CallbackWithStatus cb)
+{
+    // currently the value doesn't matter, just clear
+    bool mClearCache = any_to_bool(value);
+    start_new_task(SpinelNCPTaskSendCommand::Factory(this)
+            .set_callback(cb)
+            .add_command(SpinelPackData(SPINEL_FRAME_PACK_CMD_PROP_VALUE_SET(SPINEL_DATATYPE_BOOL_S),
+                    SPINEL_PROP_THREAD_ADDRESS_CACHE_TABLE, &mClearCache))
+            .finish());
 }
 
 void SpinelNCPInstance::property_set_value(const std::string &key, const boost::any &value, CallbackWithStatus cb)

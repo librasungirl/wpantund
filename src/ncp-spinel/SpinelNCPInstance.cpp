@@ -3724,12 +3724,12 @@ SpinelNCPInstance::set_prop_DatasetSecPolicyFlags(const boost::any &value, Callb
 	if (flags >= 256)
 	{
 		policy.mFlags[0] = static_cast<uint8_t>(flags >> 8);
-		policy.mFlags[1] = static_cast<uint8_t>flags;
+		policy.mFlags[1] = static_cast<uint8_t>(flags);
 		policy.mFlagsLen == 2;
 	}
 	else
 	{
-		policy.mFlags[0] = static_cast<uint8_t>flags;
+		policy.mFlags[0] = static_cast<uint8_t>(flags);
 		policy.mFlagsLen == 1;
 	}
 

@@ -455,7 +455,7 @@ ThreadDataset::parse_dataset_entry(const uint8_t *data_in, spinel_size_t data_le
 					 SPINEL_DATATYPE_UINT8_S
 					),
 					&sec_policy.mKeyRotationTime,
-					&sec_policy.mFlags[0]
+					&sec_policy.mFlags[0],
 					&sec_policy.mFlags[1]
 					);
 

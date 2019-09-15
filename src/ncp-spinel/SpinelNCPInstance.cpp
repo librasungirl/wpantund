@@ -2841,7 +2841,14 @@ void
 SpinelNCPInstance::get_prop_DatasetSecPolicyFlags(CallbackWithStatusArg1 cb)
 {
 	if (mLocalDataset.mSecurityPolicy.has_value()) {
-		cb(kWPANTUNDStatus_Ok, boost::any(mLocalDataset.mSecurityPolicy.get().mFlags));
+		if (mLocalDataset.mSecurityPolicy.get().mFlagsLen == 2)
+		{
+			cb(kWPANTUNDStatus_Ok, boost::any(mLocalDataset.mSecurityPolicy.get().mFlags[0] << 8 | mLocalDataset.mSecurityPolicy.get().mFlags[1]));
+		}
+		else
+		{
+			cb(kWPANTUNDStatus_Ok, boost::any(mLocalDataset.mSecurityPolicy.get().mFlags[0]));
+		}
 	} else {
 		cb(kWPANTUNDStatus_Ok, boost::any(Data()));
 	}
@@ -3712,7 +3719,20 @@ void
 SpinelNCPInstance::set_prop_DatasetSecPolicyFlags(const boost::any &value, CallbackWithStatus cb)
 {
 	ThreadDataset::SecurityPolicy policy = mLocalDataset.mSecurityPolicy.get();
-	policy.mFlags = static_cast<uint8_t>(any_to_int(value));
+	uint16_t flags = static_cast<uint16_t>(any_to_int(value));
+
+	if (flags >= 256)
+	{
+		policy.mFlags[0] = static_cast<uint8_t>(flags >> 8);
+		policy.mFlags[1] = static_cast<uint8_t>flags;
+		policy.mFlagsLen == 2;
+	}
+	else
+	{
+		policy.mFlags[0] = static_cast<uint8_t>flags;
+		policy.mFlagsLen == 1;
+	}
+
 	mLocalDataset.mSecurityPolicy = policy;
 	cb(kWPANTUNDStatus_Ok);
 }

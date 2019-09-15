@@ -107,7 +107,15 @@ ThreadDataset::convert_to_valuemap(ValueMap &map)
 
 	if (mSecurityPolicy.has_value()) {
 		map[kWPANTUNDProperty_DatasetSecPolicyKeyRotation] = mSecurityPolicy.get().mKeyRotationTime;
-		map[kWPANTUNDProperty_DatasetSecPolicyFlags] = mSecurityPolicy.get().mFlags;
+
+		if(mSecurityPolicy.mFlagsLen == 2)
+		{
+			map[kWPANTUNDProperty_DatasetSecPolicyFlags] = mSecurityPolicy.get().mFlags[0] << 8 | mSecurityPolicy.get().mFlags[1];
+		}
+		else
+		{
+			map[kWPANTUNDProperty_DatasetSecPolicyFlags] = mSecurityPolicy.get().mFlags[0];
+		}
 	}
 
 	if (mDestIpAddress.has_value()) {
@@ -189,8 +197,18 @@ ThreadDataset::convert_to_string_list(std::list<std::string> &list)
 		snprintf(str, sizeof(str), "%-32s =  %d", kWPANTUNDProperty_DatasetSecPolicyKeyRotation,
 			mSecurityPolicy.get().mKeyRotationTime);
 		list.push_back(str);
-		snprintf(str, sizeof(str), "%-32s =  0x%0X", kWPANTUNDProperty_DatasetSecPolicyFlags,
-			mSecurityPolicy.get().mFlags);
+
+		if(mSecurityPolicy.mFlagsLen == 2)
+		{
+			snprintf(str, sizeof(str), "%-32s =  0x%02X%02X", kWPANTUNDProperty_DatasetSecPolicyFlags,
+					mSecurityPolicy.get().mFlags[0], mSecurityPolicy.get().mFlags[1]);
+		}
+		else
+		{
+			snprintf(str, sizeof(str), "%-32s =  0x%02X", kWPANTUNDProperty_DatasetSecPolicyFlags,
+					mSecurityPolicy.get().mFlags[0])
+		}
+
 		list.push_back(str);
 	}
 
@@ -429,17 +447,39 @@ ThreadDataset::parse_dataset_entry(const uint8_t *data_in, spinel_size_t data_le
 			ThreadDataset::SecurityPolicy sec_policy;
 
 			len = spinel_datatype_unpack(
-				value_data,
-				value_len,
-				(
-					SPINEL_DATATYPE_UINT16_S
-					SPINEL_DATATYPE_UINT8_S
-				),
-				&sec_policy.mKeyRotationTime,
-				&sec_policy.mFlags
-			);
+					value_data,
+					value_len,
+					(
+					 SPINEL_DATATYPE_UINT16_S
+					 SPINEL_DATATYPE_UINT8_S
+					 SPINEL_DATATYPE_UINT8_S
+					),
+					&sec_policy.mKeyRotationTime,
+					&sec_policy.mFlags[0]
+					&sec_policy.mFlags[1]
+					);
 
-			require_action(len > 0, bail, ret = kWPANTUNDStatus_Failure);
+			if (len <= 0)
+			{
+				len = spinel_datatype_unpack(
+						value_data,
+						value_len,
+						(
+						 SPINEL_DATATYPE_UINT16_S
+						 SPINEL_DATATYPE_UINT8_S
+						),
+						&sec_policy.mKeyRotationTime,
+						&sec_policy.mFlags[0]
+						);
+				require_action(len > 0, bail, ret = kWPANTUNDStatus_Failure);
+				sec_policy.mFlagsLen = 1;
+
+			}
+			else
+			{
+				sec_policy.mFlagsLen = 2;
+			}
+
 			mSecurityPolicy = sec_policy;
 		}
 		break;
@@ -670,16 +710,34 @@ ThreadDataset::convert_to_spinel_frame(Data &frame, bool include_value)
 
 	if (mSecurityPolicy.has_value()) {
 		if (include_value) {
-			frame.append(SpinelPackData(
-				SPINEL_DATATYPE_STRUCT_S(
-					SPINEL_DATATYPE_UINT_PACKED_S
-					SPINEL_DATATYPE_UINT16_S
-					SPINEL_DATATYPE_UINT8_S
-				),
-				SPINEL_PROP_DATASET_SECURITY_POLICY,
-				mSecurityPolicy.get().mKeyRotationTime,
-				mSecurityPolicy.get().mFlags
-			));
+			if (mSecurityPolicy.get().mFlagsLen == 2)
+			{
+				frame.append(SpinelPackData(
+							SPINEL_DATATYPE_STRUCT_S(
+								SPINEL_DATATYPE_UINT_PACKED_S
+								SPINEL_DATATYPE_UINT16_S
+								SPINEL_DATATYPE_UINT8_S
+								SPINEL_DATATYPE_UINT8_S
+								),
+							SPINEL_PROP_DATASET_SECURITY_POLICY,
+							mSecurityPolicy.get().mKeyRotationTime,
+							mSecurityPolicy.get().mFlags[0]
+							mSecurityPolicy.get().mFlags[1]
+							));
+			}
+			else
+			{
+				frame.append(SpinelPackData(
+							SPINEL_DATATYPE_STRUCT_S(
+								SPINEL_DATATYPE_UINT_PACKED_S
+								SPINEL_DATATYPE_UINT16_S
+								SPINEL_DATATYPE_UINT8_S
+								),
+							SPINEL_PROP_DATASET_SECURITY_POLICY,
+							mSecurityPolicy.get().mKeyRotationTime,
+							mSecurityPolicy.get().mFlags[0]
+							));
+			}
 		} else {
 			frame.append(SpinelPackData(
 				SPINEL_DATATYPE_STRUCT_S(SPINEL_DATATYPE_UINT_PACKED_S),

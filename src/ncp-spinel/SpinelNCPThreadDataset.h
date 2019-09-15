@@ -51,7 +51,8 @@ public:
 
 	struct SecurityPolicy {
 		uint16_t mKeyRotationTime;
-		uint8_t  mFlags;
+		uint8_t  mFlags[2];
+		uint8_t  mFlagsLen;
 	};
 
 	ThreadDataset(void) { clear(); }

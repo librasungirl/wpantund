@@ -108,7 +108,7 @@ ThreadDataset::convert_to_valuemap(ValueMap &map)
 	if (mSecurityPolicy.has_value()) {
 		map[kWPANTUNDProperty_DatasetSecPolicyKeyRotation] = mSecurityPolicy.get().mKeyRotationTime;
 
-		if(mSecurityPolicy.mFlagsLen == 2)
+		if(mSecurityPolicy.get().mFlagsLen == 2)
 		{
 			map[kWPANTUNDProperty_DatasetSecPolicyFlags] = mSecurityPolicy.get().mFlags[0] << 8 | mSecurityPolicy.get().mFlags[1];
 		}
@@ -198,7 +198,7 @@ ThreadDataset::convert_to_string_list(std::list<std::string> &list)
 			mSecurityPolicy.get().mKeyRotationTime);
 		list.push_back(str);
 
-		if(mSecurityPolicy.mFlagsLen == 2)
+		if(mSecurityPolicy.get().mFlagsLen == 2)
 		{
 			snprintf(str, sizeof(str), "%-32s =  0x%02X%02X", kWPANTUNDProperty_DatasetSecPolicyFlags,
 					mSecurityPolicy.get().mFlags[0], mSecurityPolicy.get().mFlags[1]);
@@ -206,7 +206,7 @@ ThreadDataset::convert_to_string_list(std::list<std::string> &list)
 		else
 		{
 			snprintf(str, sizeof(str), "%-32s =  0x%02X", kWPANTUNDProperty_DatasetSecPolicyFlags,
-					mSecurityPolicy.get().mFlags[0])
+					mSecurityPolicy.get().mFlags[0]);
 		}
 
 		list.push_back(str);
@@ -721,7 +721,7 @@ ThreadDataset::convert_to_spinel_frame(Data &frame, bool include_value)
 								),
 							SPINEL_PROP_DATASET_SECURITY_POLICY,
 							mSecurityPolicy.get().mKeyRotationTime,
-							mSecurityPolicy.get().mFlags[0]
+							mSecurityPolicy.get().mFlags[0],
 							mSecurityPolicy.get().mFlags[1]
 							));
 			}
